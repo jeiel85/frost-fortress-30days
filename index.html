@@ -1,0 +1,2634 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>혹한기 요새: 30일의 생존 (Frost Fortress: 30 Days)</title>
+<style>
+  :root {
+    --bg-dark: #070b12;
+    --bg-panel: rgba(13, 21, 36, 0.88);
+    --bg-panel-hover: rgba(22, 34, 58, 0.95);
+    --border-ice: rgba(116, 238, 255, 0.25);
+    --border-ice-bright: #74eeff;
+    --heat-orange: #ff851b;
+    --heat-glow: #ff4136;
+    --frost-blue: #4deeea;
+    --text-main: #e2f1f8;
+    --text-muted: #8aa0b8;
+    --gold: #ffdc00;
+    --danger: #ff4d4d;
+    --success: #2ecc40;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "NanumSquare", "Malgun Gothic", sans-serif;
+  }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header Top Bar */
+  #top-bar {
+    height: 52px;
+    background: linear-gradient(180deg, rgba(8, 14, 26, 0.95) 0%, rgba(13, 21, 36, 0.85) 100%);
+    border-bottom: 1px solid var(--border-ice);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    z-index: 10;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  }
+
+  .stat-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(4, 9, 18, 0.6);
+    border: 1px solid rgba(116, 238, 255, 0.15);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .stat-pill .icon {
+    font-size: 15px;
+  }
+
+  .stat-pill .val {
+    color: #fff;
+    font-family: monospace;
+    font-size: 14px;
+  }
+
+  .stat-pill .rate {
+    font-size: 11px;
+    opacity: 0.85;
+  }
+  .rate.pos { color: var(--success); }
+  .rate.neg { color: var(--danger); }
+
+  .day-badge {
+    background: linear-gradient(135deg, #1c283d 0%, #0d1726 100%);
+    border: 1px solid var(--border-ice-bright);
+    box-shadow: 0 0 12px rgba(116, 238, 255, 0.3);
+    color: #fff;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .time-progress-bar {
+    width: 130px;
+    height: 8px;
+    background: #09121f;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .time-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ff851b, #ffdc00);
+    transition: width 0.1s linear;
+  }
+  .time-progress-fill.night {
+    background: linear-gradient(90deg, #0074d9, #74eeff);
+  }
+
+  .ctrl-btns {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn {
+    background: rgba(18, 30, 52, 0.85);
+    border: 1px solid var(--border-ice);
+    color: var(--text-main);
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .btn:hover {
+    background: var(--bg-panel-hover);
+    border-color: var(--border-ice-bright);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(116, 238, 255, 0.3);
+  }
+
+  .btn.active {
+    background: #ff851b;
+    border-color: #ffdc00;
+    color: #000;
+    font-weight: 800;
+  }
+
+  .btn-danger {
+    background: rgba(120, 20, 20, 0.8);
+    border-color: rgba(255, 77, 77, 0.4);
+  }
+  .btn-danger:hover {
+    background: rgba(180, 25, 25, 0.9);
+    border-color: var(--danger);
+  }
+
+  /* Main Workspace */
+  #main-container {
+    flex: 1;
+    position: relative;
+    display: flex;
+    overflow: hidden;
+  }
+
+  #game-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: crosshair;
+  }
+
+  /* Left Floating Overlay: Citizens & Morale */
+  #left-panel {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    width: 250px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-ice);
+    border-radius: 8px;
+    padding: 12px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    z-index: 5;
+  }
+
+  .panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--frost-blue);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .job-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 12px;
+    background: rgba(4, 9, 18, 0.5);
+    padding: 4px 8px;
+    border-radius: 5px;
+    border: 1px solid rgba(116, 238, 255, 0.08);
+  }
+
+  .job-row .job-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .job-stepper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .step-btn {
+    width: 22px;
+    height: 22px;
+    background: #19263c;
+    border: 1px solid var(--border-ice);
+    color: #fff;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 13px;
+  }
+  .step-btn:hover {
+    background: var(--frost-blue);
+    color: #000;
+  }
+
+  .job-count {
+    width: 26px;
+    text-align: center;
+    font-family: monospace;
+    font-weight: 700;
+  }
+
+  /* Morale & Core Health Bar */
+  .progress-wrap {
+    margin-top: 10px;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+  }
+  .bar-bg {
+    width: 100%;
+    height: 8px;
+    background: #09121f;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .bar-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  .bar-morale { background: linear-gradient(90deg, #ff4136, #ff851b, #2ecc40); }
+  .bar-core { background: linear-gradient(90deg, #ff851b, #ff4136); }
+
+  /* Bottom Building Toolbar */
+  #bottom-bar {
+    height: 94px;
+    background: linear-gradient(0deg, rgba(6, 11, 20, 0.98) 0%, rgba(13, 21, 36, 0.85) 100%);
+    border-top: 1px solid var(--border-ice);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 10px;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+    overflow-x: auto;
+  }
+
+  .build-card {
+    min-width: 90px;
+    height: 76px;
+    background: rgba(14, 24, 42, 0.85);
+    border: 1px solid rgba(116, 238, 255, 0.2);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 4px 6px;
+    text-align: center;
+    position: relative;
+  }
+
+  .build-card:hover {
+    background: rgba(26, 42, 72, 0.95);
+    border-color: var(--border-ice-bright);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(116, 238, 255, 0.3);
+  }
+
+  .build-card.selected {
+    border: 2px solid var(--heat-orange);
+    background: rgba(45, 30, 20, 0.9);
+    box-shadow: 0 0 16px rgba(255, 133, 27, 0.5);
+  }
+
+  .build-card .card-icon {
+    font-size: 20px;
+    margin-bottom: 2px;
+  }
+
+  .build-card .card-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  .build-card .card-cost {
+    font-size: 10px;
+    color: var(--gold);
+    font-family: monospace;
+    margin-top: 2px;
+  }
+
+  /* Overdrive Emergency Skill Button */
+  .overdrive-btn {
+    min-width: 110px;
+    height: 76px;
+    background: linear-gradient(135deg, rgba(80, 20, 10, 0.9) 0%, rgba(40, 10, 5, 0.9) 100%);
+    border: 2px solid #ff4136;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    margin-left: auto;
+    transition: all 0.2s;
+    box-shadow: 0 0 14px rgba(255, 65, 54, 0.4);
+    animation: pulseRed 2s infinite ease-in-out;
+  }
+
+  .overdrive-btn:hover {
+    background: linear-gradient(135deg, #ff4136 0%, #ff851b 100%);
+    color: #000;
+    font-weight: 800;
+  }
+
+  .overdrive-btn.active-pulse {
+    background: linear-gradient(135deg, #ff851b 0%, #ffdc00 100%);
+    color: #000;
+    animation: none;
+    box-shadow: 0 0 25px rgba(255, 133, 27, 0.9);
+  }
+
+  @keyframes pulseRed {
+    0% { box-shadow: 0 0 8px rgba(255, 65, 54, 0.3); }
+    50% { box-shadow: 0 0 20px rgba(255, 65, 54, 0.7); }
+    100% { box-shadow: 0 0 8px rgba(255, 65, 54, 0.3); }
+  }
+
+  /* Right Floating Building Inspector */
+  #inspector-panel {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 260px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-ice);
+    border-radius: 8px;
+    padding: 14px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    z-index: 5;
+    display: none;
+  }
+
+  /* Modals */
+  .modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(3, 7, 15, 0.85);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .modal-box {
+    width: 540px;
+    max-width: 90vw;
+    background: linear-gradient(180deg, #101a2c 0%, #09101d 100%);
+    border: 2px solid var(--border-ice-bright);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 0 40px rgba(116, 238, 255, 0.3);
+    color: var(--text-main);
+  }
+
+  .modal-box h2 {
+    color: #fff;
+    font-size: 22px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .modal-box p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+
+  .tech-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 14px 0;
+  }
+
+  .tech-item {
+    background: rgba(5, 12, 24, 0.6);
+    border: 1px solid rgba(116, 238, 255, 0.15);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .tech-item b { color: #fff; }
+
+  /* Event Banner */
+  #event-banner {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(18, 5, 5, 0.92);
+    border: 2px solid #ff4136;
+    border-radius: 30px;
+    padding: 8px 24px;
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 0 25px rgba(255, 65, 54, 0.6);
+    z-index: 20;
+    animation: bannerDrop 0.4s ease-out;
+  }
+  @keyframes bannerDrop {
+    0% { transform: translate(-50%, -20px); opacity: 0; }
+    100% { transform: translate(-50%, 0); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header id="top-bar">
+    <div class="stat-group">
+      <div class="day-badge" id="day-indicator">
+        <span>☀️ DAY 1 / 30</span>
+      </div>
+
+      <div class="stat-pill" title="현재 기온">
+        <span class="icon">❄️</span>
+        <span class="val" id="val-temp">-15°C</span>
+      </div>
+
+      <div class="stat-pill" title="석탄 (열기 코어 연료)">
+        <span class="icon">⬛</span>
+        <span class="val" id="val-coal">150</span>
+        <span class="rate" id="rate-coal">(-2/s)</span>
+      </div>
+
+      <div class="stat-pill" title="목재">
+        <span class="icon">🪵</span>
+        <span class="val" id="val-wood">180</span>
+        <span class="rate" id="rate-wood">(+0/s)</span>
+      </div>
+
+      <div class="stat-pill" title="석재">
+        <span class="icon">🪨</span>
+        <span class="val" id="val-stone">100</span>
+        <span class="rate" id="rate-stone">(+0/s)</span>
+      </div>
+
+      <div class="stat-pill" title="식량">
+        <span class="icon">🍞</span>
+        <span class="val" id="val-food">120</span>
+        <span class="rate" id="rate-food">(-1/s)</span>
+      </div>
+    </div>
+
+    <!-- Center Day/Night Clock -->
+    <div class="stat-group">
+      <span id="phase-icon" style="font-size: 16px;">☀️</span>
+      <span id="phase-text" style="font-size: 12px; font-weight: 700; width: 60px;">낮 (건설)</span>
+      <div class="time-progress-bar">
+        <div class="time-progress-fill" id="phase-progress"></div>
+      </div>
+      <button class="btn" id="btn-skip-phase" title="낮/밤 페이즈를 즉시 전환합니다">⏩ 페이즈 스킵</button>
+    </div>
+
+    <!-- Controls -->
+    <div class="stat-group">
+      <div class="ctrl-btns">
+        <button class="btn" id="btn-pause" title="일시정지 (Space)">⏸️</button>
+        <button class="btn active" id="btn-spd-1" title="1배속 (1)">1x</button>
+        <button class="btn" id="btn-spd-2" title="2배속 (2)">2x</button>
+        <button class="btn" id="btn-spd-5" title="5배속 (3)">5x</button>
+      </div>
+      <button class="btn" id="btn-sound" title="사운드 켜기/끄기">🔊</button>
+      <button class="btn" id="btn-save" title="게임 수동 저장">💾 저장</button>
+      <button class="btn" id="btn-help" title="가이드 및 조작법">❓ 가이드</button>
+      <button class="btn btn-danger" id="btn-restart" title="새 게임 시작">🔄 리셋</button>
+    </div>
+  </header>
+
+  <!-- Main Game Workspace -->
+  <main id="main-container">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Emergency Event Banner -->
+    <div id="event-banner">
+      <span id="event-icon">🚨</span>
+      <span id="event-msg">경보! 서리 골리앗이 접근하고 있습니다!</span>
+    </div>
+
+    <!-- Left Panel: Citizens & Morale -->
+    <aside id="left-panel">
+      <div class="panel-title">
+        <span>시민 및 인프라</span>
+        <span id="val-pop-total">인구 24명</span>
+      </div>
+
+      <div class="job-row">
+        <div class="job-info">
+          <span>👷</span>
+          <span>일꾼 (자원 채굴)</span>
+        </div>
+        <div class="job-stepper">
+          <div class="step-btn" onclick="Game.adjustJob('worker', -1)">-</div>
+          <span class="job-count" id="count-worker">11</span>
+          <div class="step-btn" onclick="Game.adjustJob('worker', 1)">+</div>
+        </div>
+      </div>
+
+      <div class="job-row">
+        <div class="job-info">
+          <span>🔧</span>
+          <span>공병 (성벽 수리)</span>
+        </div>
+        <div class="job-stepper">
+          <div class="step-btn" onclick="Game.adjustJob('engineer', -1)">-</div>
+          <span class="job-count" id="count-engineer">5</span>
+          <div class="step-btn" onclick="Game.adjustJob('engineer', 1)">+</div>
+        </div>
+      </div>
+
+      <div class="job-row">
+        <div class="job-info">
+          <span>🏹</span>
+          <span>수호병 (성벽 사격)</span>
+        </div>
+        <div class="job-stepper">
+          <div class="step-btn" onclick="Game.adjustJob('soldier', -1)">-</div>
+          <span class="job-count" id="count-soldier">6</span>
+          <div class="step-btn" onclick="Game.adjustJob('soldier', 1)">+</div>
+        </div>
+      </div>
+
+      <div class="job-row" style="background: transparent; border: none; font-size: 11px; color: var(--text-muted);">
+        <span>자유 시민: <b id="count-idle" style="color: #fff;">2</b>명</span>
+        <span>병상/부상: <b id="count-sick" style="color: var(--danger);">0</b>명</span>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span>사기 (Morale)</span>
+          <span id="val-morale">85%</span>
+        </div>
+        <div class="bar-bg">
+          <div class="bar-fill bar-morale" id="bar-morale" style="width: 85%;"></div>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span>열기 코어 내구도</span>
+          <span id="val-core-hp">100%</span>
+        </div>
+        <div class="bar-bg">
+          <div class="bar-fill bar-core" id="bar-core-hp" style="width: 100%;"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Inspector Panel -->
+    <aside id="inspector-panel">
+      <div class="panel-title">
+        <span id="insp-name">건물 정보</span>
+        <button class="btn" style="padding: 2px 6px; font-size: 10px;" onclick="Game.closeInspector()">✕</button>
+      </div>
+      <div id="insp-desc" style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">설명</div>
+      <div id="insp-stats" style="font-size: 12px; line-height: 1.6; margin-bottom: 12px;"></div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn" id="btn-upgrade-bldg" style="flex: 1; justify-content: center; background: #ff851b; color:#000; font-weight:bold;">티어 업그레이드</button>
+        <button class="btn btn-danger" id="btn-demolish-bldg" style="padding: 5px 8px;">철거</button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Bottom Building Shelf -->
+  <footer id="bottom-bar">
+    <div id="build-shelf" style="display: flex; gap: 8px;"></div>
+
+    <!-- Core Overdrive Emergency Action -->
+    <div class="overdrive-btn" id="btn-overdrive" title="석탄 2배 소모로 열기 반경 50% 확대 및 빙결 파쇄 충격파 방출">
+      <span style="font-size: 20px;">🔥</span>
+      <span style="font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">열기 과부하</span>
+      <span style="font-size: 9px; opacity: 0.8;" id="overdrive-status">OFF</span>
+    </div>
+  </footer>
+
+  <!-- Help & Guide Modal -->
+  <div class="modal-backdrop" id="modal-help">
+    <div class="modal-box">
+      <h2>❄️ 혹한기 요새: 생존 가이드</h2>
+      <p>
+        극지방 한가운데 세워진 거대 열기 발전기를 중심으로 방벽을 쌓고, 30일간 몰려오는 얼음 괴수들을 막아내며 생존하십시오!
+      </p>
+
+      <div class="tech-grid">
+        <div class="tech-item">
+          <b>☀️ 낮 단계 (건설 & 채굴)</b><br>
+          제한된 시간 동안 일꾼을 배치해 석탄, 목재, 석재를 채굴하고 방어벽과 타워를 건설하십시오.
+        </div>
+        <div class="tech-item">
+          <b>🌙 밤 단계 (혹한기 공성)</b><br>
+          기온이 급강하하며 괴수들이 침공합니다. 성벽과 궁수, 발리스타, 화염방사탑이 요새를 방어합니다.
+        </div>
+        <div class="tech-item">
+          <b>🔥 열기 코어 관리</b><br>
+          석탄이 고갈되어 코어가 꺼지면 시민들이 얼어붙고 사기가 급락합니다. 긴급 시 <b>열기 과부하</b>를 가동하세요!
+        </div>
+        <div class="tech-item">
+          <b>👹 10일 주기 보스 & 최종전</b><br>
+          Day 10(서리 골리앗), Day 20(빙하 베히모스), Day 30(절대영도 군주 대폭풍)의 총공세를 극복하세요.
+        </div>
+      </div>
+
+      <p style="font-size: 11px; color: var(--border-ice-bright);">
+        단축키: <b>Space</b> (일시정지), <b>1 / 2 / 3</b> (배속 조절), <b>ESC</b> (선택 취소)
+      </p>
+
+      <button class="btn" style="width: 100%; justify-content: center; padding: 10px; font-size: 14px; background: #74eeff; color: #000; font-weight: 800;" onclick="Game.closeModal('modal-help')">전장으로 돌아가기</button>
+    </div>
+  </div>
+
+  <!-- Game Over / Victory Modal -->
+  <div class="modal-backdrop" id="modal-end">
+    <div class="modal-box" style="text-align: center;">
+      <h2 id="end-title" style="justify-content: center; font-size: 26px;">생존 실패</h2>
+      <p id="end-desc" style="font-size: 14px; margin: 16px 0;">혹한의 어둠 속에서 열기 코어가 꺼졌습니다...</p>
+      <div id="end-stats" style="background: rgba(0,0,0,0.4); padding: 14px; border-radius: 8px; font-family: monospace; font-size: 13px; line-height: 1.8; margin-bottom: 20px;"></div>
+      <button class="btn" style="padding: 12px 30px; font-size: 15px; background: #ff851b; color: #000; font-weight: 800;" onclick="Game.restartGame()">새로운 원정 시작하기</button>
+    </div>
+  </div>
+
+<script>
+/**
+ * 30일 혹한기 요새 디펜스 시뮬레이터 (Frost Fortress: 30 Days)
+ * Engine: Pure Canvas 2D + Procedural Web Audio API + Zero External Dependencies
+ */
+
+// --- 1. PROCEDURAL WEB AUDIO SYNTHESIZER ---
+class SoundEngine {
+  constructor() {
+    this.ctx = null;
+    this.isMuted = false;
+    this.windNode = null;
+    this.windGain = null;
+  }
+
+  init() {
+    if (this.ctx) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AudioContext();
+    this.startWindAmbience();
+  }
+
+  toggleMute() {
+    this.isMuted = !this.isMuted;
+    if (this.ctx) {
+      if (this.isMuted) {
+        this.ctx.suspend();
+      } else {
+        this.ctx.resume();
+      }
+    }
+    return !this.isMuted;
+  }
+
+  startWindAmbience() {
+    if (!this.ctx || this.windNode) return;
+    try {
+      const bufferSize = this.ctx.sampleRate * 2;
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      let lastOut = 0.0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        data[i] = (lastOut + (0.02 * white)) / 1.02; // Pink noise
+        lastOut = data[i];
+        data[i] *= 3.5;
+      }
+
+      this.windNode = this.ctx.createBufferSource();
+      this.windNode.buffer = buffer;
+      this.windNode.loop = true;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(320, this.ctx.currentTime);
+
+      this.windGain = this.ctx.createGain();
+      this.windGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+
+      this.windNode.connect(filter);
+      filter.connect(this.windGain);
+      this.windGain.connect(this.ctx.destination);
+      this.windNode.start();
+    } catch(e) {
+      console.warn("Audio init deferred", e);
+    }
+  }
+
+  playSiren() {
+    if (!this.ctx || this.isMuted) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+
+    const now = this.ctx.currentTime;
+    osc.frequency.setValueAtTime(400, now);
+    osc.frequency.linearRampToValueAtTime(750, now + 0.6);
+    osc.frequency.linearRampToValueAtTime(380, now + 1.2);
+    osc.frequency.linearRampToValueAtTime(720, now + 1.8);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 2.4);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 2.5);
+  }
+
+  playDawnHorn() {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    [261.63, 329.63, 392.00, 523.25].forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + i * 0.12);
+      gain.gain.setValueAtTime(0.12, now + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 1.5);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now + i * 0.12);
+      osc.stop(now + i * 0.12 + 1.6);
+    });
+  }
+
+  playBuild() {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.18);
+  }
+
+  playHammer() {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(880 + Math.random()*200, now);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.09);
+  }
+
+  playBallista() {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(600, now);
+    osc.frequency.exponentialRampToValueAtTime(90, now + 0.25);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.3);
+  }
+
+  playExplosion() {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(90, now);
+    osc.frequency.exponentialRampToValueAtTime(25, now + 0.4);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.5);
+  }
+
+  playMonsterDeath() {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(320, now);
+    osc.frequency.linearRampToValueAtTime(80, now + 0.2);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.25);
+  }
+
+  playOverdrive() {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(100, now);
+    osc.frequency.linearRampToValueAtTime(450, now + 0.5);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.85);
+  }
+}
+
+const AudioSys = new SoundEngine();
+
+// --- 2. GAME DATA & BUILDING DEFINITIONS (11 TYPES) ---
+const BUILDING_TYPES = {
+  wall: {
+    id: 'wall',
+    name: '방어 성벽',
+    icon: '🧱',
+    cost: { wood: 15, stone: 10, coal: 0 },
+    hp: 400,
+    desc: '괴수의 진격을 차단하고 수호병이 배치되어 사격합니다.',
+    category: 'defense',
+    size: 26,
+    upgrades: [
+      { name: '석조 방벽 (T2)', cost: { wood: 20, stone: 35 }, hp: 850 },
+      { name: '강철 요새벽 (T3)', cost: { wood: 40, stone: 80, coal: 20 }, hp: 1800 }
+    ]
+  },
+  ballista: {
+    id: 'ballista',
+    name: '발리스타 탑',
+    icon: '🏹',
+    cost: { wood: 35, stone: 25, coal: 0 },
+    hp: 260,
+    range: 190,
+    damage: 65,
+    fireRate: 1.4,
+    desc: '원거리 관통 화살을 발사하여 강력한 단일 괴수를 제압합니다.',
+    category: 'tower',
+    size: 28,
+    upgrades: [
+      { name: '중형 발리스타 (T2)', cost: { wood: 45, stone: 50 }, damage: 120, range: 230 },
+      { name: '강철 관통포탑 (T3)', cost: { wood: 70, stone: 90, coal: 30 }, damage: 240, range: 280 }
+    ]
+  },
+  flamethrower: {
+    id: 'flamethrower',
+    name: '화염 방사탑',
+    icon: '🔥',
+    cost: { wood: 40, stone: 40, coal: 25 },
+    hp: 300,
+    range: 125,
+    damage: 42,
+    fireRate: 0.35,
+    desc: '원뿔형 화염을 뿜어 무리지어 오는 괴수들을 불태우고 주변을 덥힙니다.',
+    category: 'tower',
+    size: 28,
+    upgrades: [
+      { name: '과열 화염탑 (T2)', cost: { wood: 50, stone: 60, coal: 40 }, damage: 85, range: 150 },
+      { name: '네이팜 코어탑 (T3)', cost: { wood: 80, stone: 110, coal: 70 }, damage: 160, range: 180 }
+    ]
+  },
+  shelter: {
+    id: 'shelter',
+    name: '방한 숙소',
+    icon: '⛺',
+    cost: { wood: 30, stone: 15, coal: 0 },
+    hp: 200,
+    popCap: 8,
+    desc: '시민들을 수용하고 밤 동안의 혹한 동사를 방지합니다.',
+    category: 'infra',
+    size: 28,
+    upgrades: [
+      { name: '단열 막사 (T2)', cost: { wood: 40, stone: 30 }, popCap: 14 },
+      { name: '증기 난방 거주구 (T3)', cost: { wood: 60, stone: 60, coal: 25 }, popCap: 22 }
+    ]
+  },
+  greenhouse: {
+    id: 'greenhouse',
+    name: '수경 온실',
+    icon: '🌱',
+    cost: { wood: 45, stone: 20, coal: 15 },
+    hp: 180,
+    foodProd: 2.2,
+    desc: '열기 반경 내에서 식량을 안정적으로 생산합니다.',
+    category: 'economy',
+    size: 28,
+    upgrades: [
+      { name: '밀폐 증기온실 (T2)', cost: { wood: 60, stone: 45, coal: 30 }, foodProd: 4.5 },
+      { name: '생체 농업 돔 (T3)', cost: { wood: 90, stone: 80, coal: 50 }, foodProd: 8.0 }
+    ]
+  },
+  coalMine: {
+    id: 'coalMine',
+    name: '석탄 추출기',
+    icon: '⛏️',
+    cost: { wood: 40, stone: 30, coal: 0 },
+    hp: 250,
+    coalProd: 2.0,
+    desc: '지하 석탄층을 채굴하여 중앙 열기 코어의 연료를 조달합니다.',
+    category: 'economy',
+    size: 30,
+    upgrades: [
+      { name: '증기 천공 채굴기 (T2)', cost: { wood: 60, stone: 60 }, coalProd: 4.2 },
+      { name: '심층 코어 시추탑 (T3)', cost: { wood: 100, stone: 110, coal: 30 }, coalProd: 8.0 }
+    ]
+  },
+  sawmill: {
+    id: 'sawmill',
+    name: '벌목 제재소',
+    icon: '🪓',
+    cost: { wood: 25, stone: 20, coal: 0 },
+    hp: 220,
+    woodProd: 2.5,
+    desc: '동토의 얼어붙은 침엽수를 벌목하여 목재를 가공합니다.',
+    category: 'economy',
+    size: 28,
+    upgrades: [
+      { name: '동력 제재소 (T2)', cost: { wood: 45, stone: 40 }, woodProd: 5.0 },
+      { name: '증기 자동 목재소 (T3)', cost: { wood: 75, stone: 80, coal: 20 }, woodProd: 9.5 }
+    ]
+  },
+  quarry: {
+    id: 'quarry',
+    name: '채석장',
+    icon: '🪨',
+    cost: { wood: 35, stone: 20, coal: 0 },
+    hp: 240,
+    stoneProd: 2.0,
+    desc: '단단한 빙하 암반을 채굴하여 요새 성벽의 석재를 공급합니다.',
+    category: 'economy',
+    size: 28,
+    upgrades: [
+      { name: '중장비 채석장 (T2)', cost: { wood: 50, stone: 50 }, stoneProd: 4.2 },
+      { name: '암반 파쇄 플랜트 (T3)', cost: { wood: 80, stone: 90, coal: 25 }, stoneProd: 8.5 }
+    ]
+  },
+  barracks: {
+    id: 'barracks',
+    name: '수호 훈련소',
+    icon: '⚔️',
+    cost: { wood: 50, stone: 40, coal: 15 },
+    hp: 300,
+    desc: '수호병의 공격력과 사거리를 강화하고 정예 방패병을 양성합니다.',
+    category: 'military',
+    size: 32,
+    upgrades: [
+      { name: '정예 수호기사단 (T2)', cost: { wood: 75, stone: 80, coal: 35 } },
+      { name: '서리 파쇄 특공대 (T3)', cost: { wood: 120, stone: 140, coal: 60 } }
+    ]
+  },
+  repairWorkshop: {
+    id: 'repairWorkshop',
+    name: '공병 수리소',
+    icon: '🛠️',
+    cost: { wood: 45, stone: 35, coal: 10 },
+    hp: 250,
+    desc: '공병의 성벽 수리 효율을 대폭 증대시키고 요새 내구도를 회복합니다.',
+    category: 'support',
+    size: 28,
+    upgrades: [
+      { name: '기계화 수리공방 (T2)', cost: { wood: 65, stone: 65, coal: 25 } },
+      { name: '나노 증기 복구실 (T3)', cost: { wood: 100, stone: 110, coal: 50 } }
+    ]
+  },
+  infirmary: {
+    id: 'infirmary',
+    name: '야전 의무실',
+    icon: '🏥',
+    cost: { wood: 50, stone: 30, coal: 20 },
+    hp: 220,
+    desc: '동상 및 부상당한 시민을 치료하고 요새의 사기를 유지합니다.',
+    category: 'support',
+    size: 28,
+    upgrades: [
+      { name: '방한 종합 병원 (T2)', cost: { wood: 70, stone: 60, coal: 35 } },
+      { name: '생체 회복 요람 (T3)', cost: { wood: 110, stone: 100, coal: 60 } }
+    ]
+  }
+};
+
+// --- 3. MAIN GAME STATE ---
+class GameEngine {
+  constructor() {
+    this.canvas = document.getElementById('game-canvas');
+    this.ctx = this.canvas.getContext('2d');
+
+    this.day = 1;
+    this.maxDays = 30;
+    this.phase = 'day'; // 'day' or 'night'
+    this.phaseTimer = 0;
+    this.dayDuration = 55;   // 55s day
+    this.nightDuration = 45; // 45s night
+
+    this.speed = 1;
+    this.isPaused = false;
+
+    // Resources
+    this.coal = 150;
+    this.wood = 180;
+    this.stone = 100;
+    this.food = 120;
+    this.morale = 85;
+
+    // Citizens
+    this.totalPop = 24;
+    this.workers = 11;
+    this.engineers = 5;
+    this.soldiers = 6;
+    this.sick = 0;
+
+    // Heat Core
+    this.core = {
+      x: 0,
+      y: 0,
+      radius: 160,
+      tier: 1,
+      hp: 1200,
+      maxHp: 1200,
+      overdrive: false,
+      pulseAnim: 0
+    };
+
+    // Entities
+    this.buildings = [];
+    this.enemies = [];
+    this.projectiles = [];
+    this.particles = [];
+    this.snowflakes = [];
+    this.floatTexts = [];
+
+    // Interaction
+    this.selectedBuildType = null;
+    this.selectedBuilding = null;
+    this.mouse = { x: 0, y: 0, isDown: false };
+
+    // Environmental
+    this.temp = -15;
+    this.blizzardIntensity = 0.2;
+
+    this.initCanvas();
+    this.initSnow();
+    this.initEventListeners();
+    this.createInitialFortress();
+    this.renderBuildShelf();
+
+    this.lastTime = performance.now();
+    requestAnimationFrame(this.gameLoop.bind(this));
+  }
+
+  initCanvas() {
+    const resize = () => {
+      this.canvas.width = this.canvas.parentElement.clientWidth;
+      this.canvas.height = this.canvas.parentElement.clientHeight;
+      this.core.x = this.canvas.width / 2;
+      this.core.y = this.canvas.height / 2;
+    };
+    window.addEventListener('resize', resize);
+    resize();
+  }
+
+  initSnow() {
+    this.snowflakes = [];
+    for (let i = 0; i < 220; i++) {
+      this.snowflakes.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        size: Math.random() * 2.5 + 0.8,
+        speedX: Math.random() * 2.5 + 1.2,
+        speedY: Math.random() * 2 + 1,
+        alpha: Math.random() * 0.7 + 0.3
+      });
+    }
+  }
+
+  createInitialFortress() {
+    const cx = this.core.x;
+    const cy = this.core.y;
+
+    // Initial 8 Compass Walls
+    const wallDist = 135;
+    [
+      { x: cx, y: cy - wallDist },
+      { x: cx, y: cy + wallDist },
+      { x: cx - wallDist, y: cy },
+      { x: cx + wallDist, y: cy },
+      { x: cx - wallDist * 0.7, y: cy - wallDist * 0.7 },
+      { x: cx + wallDist * 0.7, y: cy - wallDist * 0.7 },
+      { x: cx - wallDist * 0.7, y: cy + wallDist * 0.7 },
+      { x: cx + wallDist * 0.7, y: cy + wallDist * 0.7 },
+    ].forEach(p => {
+      this.buildings.push(this.createBuilding('wall', p.x, p.y));
+    });
+
+    // Initial Starter Buildings
+    this.buildings.push(this.createBuilding('shelter', cx - 65, cy - 45));
+    this.buildings.push(this.createBuilding('greenhouse', cx + 65, cy - 45));
+    this.buildings.push(this.createBuilding('coalMine', cx - 65, cy + 55));
+    this.buildings.push(this.createBuilding('ballista', cx, cy - 170));
+    this.buildings.push(this.createBuilding('repairWorkshop', cx + 65, cy + 55));
+  }
+
+  createBuilding(typeId, x, y) {
+    const data = BUILDING_TYPES[typeId];
+    return {
+      id: 'b_' + Math.random().toString(36).substr(2, 9),
+      type: typeId,
+      name: data.name,
+      x: x,
+      y: y,
+      tier: 1,
+      hp: data.hp,
+      maxHp: data.hp,
+      size: data.size || 28,
+      lastShot: 0,
+      range: data.range || 0,
+      damage: data.damage || 0,
+      target: null
+    };
+  }
+
+  renderBuildShelf() {
+    const shelf = document.getElementById('build-shelf');
+    shelf.innerHTML = '';
+
+    Object.values(BUILDING_TYPES).forEach(b => {
+      const card = document.createElement('div');
+      card.className = 'build-card';
+      card.id = 'card-' + b.id;
+      card.title = `${b.name}\n${b.desc}\n비용: 목재 ${b.cost.wood}, 석재 ${b.cost.stone}${b.cost.coal ? ', 석탄 ' + b.cost.coal : ''}`;
+      
+      card.innerHTML = `
+        <div class="card-icon">${b.icon}</div>
+        <div class="card-name">${b.name}</div>
+        <div class="card-cost">🪵${b.cost.wood} 🪨${b.cost.stone}</div>
+      `;
+
+      card.onclick = () => {
+        AudioSys.init();
+        if (this.selectedBuildType === b.id) {
+          this.selectedBuildType = null;
+          card.classList.remove('selected');
+        } else {
+          document.querySelectorAll('.build-card').forEach(c => c.classList.remove('selected'));
+          this.selectedBuildType = b.id;
+          card.classList.add('selected');
+        }
+      };
+
+      shelf.appendChild(card);
+    });
+  }
+
+  initEventListeners() {
+    const c = this.canvas;
+
+    c.addEventListener('mousemove', (e) => {
+      const rect = c.getBoundingClientRect();
+      this.mouse.x = e.clientX - rect.left;
+      this.mouse.y = e.clientY - rect.top;
+    });
+
+    c.addEventListener('mousedown', (e) => {
+      AudioSys.init();
+      const rect = c.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      if (e.button === 0) { // Left Click
+        if (this.selectedBuildType) {
+          this.tryPlaceBuilding(mx, my);
+        } else {
+          this.trySelectBuilding(mx, my);
+        }
+      } else if (e.button === 2) { // Right Click cancel
+        this.cancelPlacement();
+      }
+    });
+
+    c.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        this.togglePause();
+      } else if (e.key === '1') {
+        this.setSpeed(1);
+      } else if (e.key === '2') {
+        this.setSpeed(2);
+      } else if (e.key === '3') {
+        this.setSpeed(5);
+      } else if (e.code === 'Escape') {
+        this.cancelPlacement();
+        this.closeInspector();
+        this.closeModal('modal-help');
+      }
+    });
+
+    // UI Buttons
+    document.getElementById('btn-pause').onclick = () => this.togglePause();
+    document.getElementById('btn-spd-1').onclick = () => this.setSpeed(1);
+    document.getElementById('btn-spd-2').onclick = () => this.setSpeed(2);
+    document.getElementById('btn-spd-5').onclick = () => this.setSpeed(5);
+
+    document.getElementById('btn-skip-phase').onclick = () => {
+      AudioSys.init();
+      this.skipPhase();
+    };
+
+    document.getElementById('btn-sound').onclick = () => {
+      AudioSys.init();
+      const on = AudioSys.toggleMute();
+      document.getElementById('btn-sound').innerText = on ? '🔊' : '🔇';
+    };
+
+    document.getElementById('btn-overdrive').onclick = () => {
+      AudioSys.init();
+      this.toggleOverdrive();
+    };
+
+    document.getElementById('btn-save').onclick = () => this.saveGame();
+    document.getElementById('btn-restart').onclick = () => {
+      if (confirm("정말로 요새를 초기화하고 처음부터 다시 시작하시겠습니까?")) {
+        this.restartGame();
+      }
+    };
+
+    document.getElementById('btn-help').onclick = () => {
+      document.getElementById('modal-help').style.display = 'flex';
+    };
+
+    document.getElementById('btn-upgrade-bldg').onclick = () => this.upgradeSelectedBuilding();
+    document.getElementById('btn-demolish-bldg').onclick = () => this.demolishSelectedBuilding();
+  }
+
+  cancelPlacement() {
+    this.selectedBuildType = null;
+    document.querySelectorAll('.build-card').forEach(c => c.classList.remove('selected'));
+  }
+
+  tryPlaceBuilding(x, y) {
+    const type = BUILDING_TYPES[this.selectedBuildType];
+    if (!type) return;
+
+    // Check cost
+    if (this.wood < type.cost.wood || this.stone < type.cost.stone || this.coal < (type.cost.coal || 0)) {
+      this.addFloatText(x, y, "자원 부족!", "#ff4d4d");
+      return;
+    }
+
+    // Check distance to core
+    const dToCore = Math.hypot(x - this.core.x, y - this.core.y);
+    if (dToCore < 40) {
+      this.addFloatText(x, y, "코어와 너무 가깝습니다!", "#ff4d4d");
+      return;
+    }
+
+    // Check overlap with existing buildings
+    const overlap = this.buildings.some(b => Math.hypot(b.x - x, b.y - y) < (b.size + (type.size || 28)) * 0.7);
+    if (overlap) {
+      this.addFloatText(x, y, "건설 공간 부족!", "#ff4d4d");
+      return;
+    }
+
+    // Pay cost
+    this.wood -= type.cost.wood;
+    this.stone -= type.cost.stone;
+    this.coal -= (type.cost.coal || 0);
+
+    const bldg = this.createBuilding(this.selectedBuildType, x, y);
+    this.buildings.push(bldg);
+    AudioSys.playBuild();
+    this.addFloatText(x, y, `+ ${type.name}`, "#2ecc40");
+
+    // Spawn dust sparks
+    for (let i = 0; i < 15; i++) {
+      this.particles.push({
+        x: x, y: y,
+        vx: (Math.random() - 0.5) * 3,
+        vy: (Math.random() - 0.5) * 3,
+        color: '#e2f1f8',
+        size: Math.random() * 3 + 1,
+        life: 0.5, maxLife: 0.5
+      });
+    }
+  }
+
+  trySelectBuilding(x, y) {
+    const clicked = this.buildings.find(b => Math.hypot(b.x - x, b.y - y) <= b.size);
+    if (clicked) {
+      this.selectedBuilding = clicked;
+      this.openInspector(clicked);
+    } else {
+      // Check core
+      if (Math.hypot(x - this.core.x, y - this.core.y) <= 45) {
+        this.openCoreInspector();
+      } else {
+        this.closeInspector();
+      }
+    }
+  }
+
+  openInspector(bldg) {
+    const panel = document.getElementById('inspector-panel');
+    const def = BUILDING_TYPES[bldg.type];
+    document.getElementById('insp-name').innerText = `${bldg.name} (T${bldg.tier})`;
+    document.getElementById('insp-desc').innerText = def.desc;
+
+    let statsHtml = `
+      <div>내구도: <b>${Math.ceil(bldg.hp)} / ${bldg.maxHp}</b></div>
+      <div>분류: <b>${def.category.toUpperCase()}</b></div>
+    `;
+    if (bldg.damage) statsHtml += `<div>공격력: <b>${bldg.damage}</b> | 사거리: <b>${bldg.range}</b></div>`;
+    if (def.foodProd) statsHtml += `<div>식량 생산: <b>+${(def.foodProd * bldg.tier).toFixed(1)}/s</b></div>`;
+    if (def.coalProd) statsHtml += `<div>석탄 생산: <b>+${(def.coalProd * bldg.tier).toFixed(1)}/s</b></div>`;
+    if (def.woodProd) statsHtml += `<div>목재 생산: <b>+${(def.woodProd * bldg.tier).toFixed(1)}/s</b></div>`;
+    if (def.stoneProd) statsHtml += `<div>석재 생산: <b>+${(def.stoneProd * bldg.tier).toFixed(1)}/s</b></div>`;
+    if (def.popCap) statsHtml += `<div>수용 인원: <b>+${def.popCap * bldg.tier}명</b></div>`;
+
+    document.getElementById('insp-stats').innerHTML = statsHtml;
+
+    const upBtn = document.getElementById('btn-upgrade-bldg');
+    const nextUp = def.upgrades && def.upgrades[bldg.tier - 1];
+    if (nextUp) {
+      upBtn.style.display = 'block';
+      let costStr = Object.entries(nextUp.cost).map(([k, v]) => `${k}:${v}`).join(' ');
+      upBtn.innerText = `업그레이드 (${costStr})`;
+    } else {
+      upBtn.style.display = 'none';
+    }
+
+    panel.style.display = 'block';
+  }
+
+  openCoreInspector() {
+    const panel = document.getElementById('inspector-panel');
+    document.getElementById('insp-name').innerText = `중앙 열기 코어 (Tier ${this.core.tier})`;
+    document.getElementById('insp-desc').innerText = "요새의 심장입니다. 코어가 꺼지거나 파괴되면 혹한으로 인해 인류는 멸망합니다.";
+
+    document.getElementById('insp-stats').innerHTML = `
+      <div>코어 내구도: <b>${Math.ceil(this.core.hp)} / ${this.core.maxHp}</b></div>
+      <div>열기 방경: <b>${this.core.radius}px</b></div>
+      <div>과부하 상태: <b>${this.core.overdrive ? '가동 중 (석탄 2배 소모)' : '비가동'}</b></div>
+    `;
+
+    const upBtn = document.getElementById('btn-upgrade-bldg');
+    if (this.core.tier < 4) {
+      const upCost = { wood: 80 * this.core.tier, stone: 90 * this.core.tier, coal: 50 * this.core.tier };
+      upBtn.style.display = 'block';
+      upBtn.innerText = `코어 강화 (🪵${upCost.wood} 🪨${upCost.stone} ⬛${upCost.coal})`;
+    } else {
+      upBtn.style.display = 'none';
+    }
+
+    panel.style.display = 'block';
+  }
+
+  closeInspector() {
+    this.selectedBuilding = null;
+    document.getElementById('inspector-panel').style.display = 'none';
+  }
+
+  upgradeSelectedBuilding() {
+    if (!this.selectedBuilding) {
+      // Upgrading Core
+      const upCost = { wood: 80 * this.core.tier, stone: 90 * this.core.tier, coal: 50 * this.core.tier };
+      if (this.wood >= upCost.wood && this.stone >= upCost.stone && this.coal >= upCost.coal) {
+        this.wood -= upCost.wood;
+        this.stone -= upCost.stone;
+        this.coal -= upCost.coal;
+        this.core.tier++;
+        this.core.radius += 35;
+        this.core.maxHp += 500;
+        this.core.hp = this.core.maxHp;
+        AudioSys.playBuild();
+        this.addFloatText(this.core.x, this.core.y, `열기 코어 T${this.core.tier} 승급!`, '#ffdc00');
+        this.openCoreInspector();
+      } else {
+        alert("자원이 부족합니다!");
+      }
+      return;
+    }
+
+    const b = this.selectedBuilding;
+    const def = BUILDING_TYPES[b.type];
+    const up = def.upgrades && def.upgrades[b.tier - 1];
+    if (!up) return;
+
+    const c = up.cost;
+    if (this.wood >= (c.wood || 0) && this.stone >= (c.stone || 0) && this.coal >= (c.coal || 0)) {
+      this.wood -= (c.wood || 0);
+      this.stone -= (c.stone || 0);
+      this.coal -= (c.coal || 0);
+
+      b.tier++;
+      if (up.hp) { b.maxHp = up.hp; b.hp = b.maxHp; }
+      if (up.damage) b.damage = up.damage;
+      if (up.range) b.range = up.range;
+
+      AudioSys.playBuild();
+      this.addFloatText(b.x, b.y, `${up.name} 승급 완료!`, '#ffdc00');
+      this.openInspector(b);
+    } else {
+      alert("자원이 부족합니다!");
+    }
+  }
+
+  demolishSelectedBuilding() {
+    if (!this.selectedBuilding) return;
+    const idx = this.buildings.indexOf(this.selectedBuilding);
+    if (idx !== -1) {
+      const b = this.selectedBuilding;
+      const def = BUILDING_TYPES[b.type];
+      // Refund 40%
+      this.wood += Math.floor(def.cost.wood * 0.4);
+      this.stone += Math.floor(def.cost.stone * 0.4);
+      this.buildings.splice(idx, 1);
+      AudioSys.playExplosion();
+      this.closeInspector();
+    }
+  }
+
+  toggleOverdrive() {
+    if (this.coal <= 10) {
+      this.addFloatText(this.core.x, this.core.y, "석탄 부족으로 과부하 불가!", "#ff4136");
+      return;
+    }
+
+    this.core.overdrive = !this.core.overdrive;
+    const btn = document.getElementById('btn-overdrive');
+    const stat = document.getElementById('overdrive-status');
+
+    if (this.core.overdrive) {
+      btn.classList.add('active-pulse');
+      stat.innerText = "ACTIVE";
+      AudioSys.playOverdrive();
+      this.triggerThermalShockwave();
+    } else {
+      btn.classList.remove('active-pulse');
+      stat.innerText = "OFF";
+    }
+  }
+
+  triggerThermalShockwave() {
+    this.core.pulseAnim = 1.0;
+    // Damage and slow all enemies within 380px
+    this.enemies.forEach(e => {
+      const d = Math.hypot(e.x - this.core.x, e.y - this.core.y);
+      if (d < 380) {
+        e.hp -= 150;
+        e.speed *= 0.4;
+        this.addFloatText(e.x, e.y, "-150 열기 충격!", "#ff851b");
+      }
+    });
+
+    for (let i = 0; i < 60; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const spd = Math.random() * 5 + 2;
+      this.particles.push({
+        x: this.core.x, y: this.core.y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        color: '#ff851b',
+        size: Math.random() * 4 + 2,
+        life: 1.0, maxLife: 1.0
+      });
+    }
+  }
+
+  adjustJob(job, delta) {
+    AudioSys.init();
+    const idle = this.getIdlePop();
+    if (delta > 0 && idle <= 0) return;
+
+    if (job === 'worker' && this.workers + delta >= 0) this.workers += delta;
+    if (job === 'engineer' && this.engineers + delta >= 0) this.engineers += delta;
+    if (job === 'soldier' && this.soldiers + delta >= 0) this.soldiers += delta;
+
+    this.updateUI();
+  }
+
+  getIdlePop() {
+    return Math.max(0, this.totalPop - this.workers - this.engineers - this.soldiers - this.sick);
+  }
+
+  togglePause() {
+    AudioSys.init();
+    this.isPaused = !this.isPaused;
+    document.getElementById('btn-pause').classList.toggle('active', this.isPaused);
+  }
+
+  setSpeed(val) {
+    AudioSys.init();
+    this.speed = val;
+    this.isPaused = false;
+    document.getElementById('btn-pause').classList.remove('active');
+    ['1', '2', '5'].forEach(s => {
+      document.getElementById('btn-spd-' + s).classList.toggle('active', s == val);
+    });
+  }
+
+  skipPhase() {
+    if (this.phase === 'day') {
+      this.startNight();
+    } else {
+      this.startDay();
+    }
+  }
+
+  startNight() {
+    this.phase = 'night';
+    this.phaseTimer = 0;
+    AudioSys.playSiren();
+    this.showBanner(`🚨 혹한기 야간 공습! (Day ${this.day} 전투 개시)`);
+
+    // Calculate wave size based on day
+    let count = 6 + Math.floor(this.day * 3.2);
+    if (this.day === 10) count = 25; // Boss 1
+    if (this.day === 20) count = 45; // Boss 2
+    if (this.day === 30) count = 80; // Final Boss
+
+    this.spawnWave(count);
+  }
+
+  startDay() {
+    this.phase = 'day';
+    this.phaseTimer = 0;
+    this.day++;
+
+    // Check Victory
+    if (this.day > this.maxDays) {
+      this.triggerVictory();
+      return;
+    }
+
+    AudioSys.playDawnHorn();
+    this.showBanner(`☀️ 여명이 밝았습니다. (Day ${this.day} - 생존 성공)`);
+
+    // Population & Morale calculation
+    this.processDayDawnEvents();
+    this.saveGame(true); // Auto save
+  }
+
+  processDayDawnEvents() {
+    // Check if citizens starved or froze
+    if (this.food <= 0) {
+      this.morale -= 12;
+      this.sick += Math.min(3, this.totalPop);
+      this.addFloatText(this.core.x, this.core.y, "식량 고갈! 기아 발생", "#ff4d4d");
+    }
+
+    if (this.coal <= 0) {
+      this.morale -= 20;
+      const dead = Math.min(2, Math.floor(this.totalPop * 0.15));
+      this.totalPop -= dead;
+      this.sick += 4;
+      this.addFloatText(this.core.x, this.core.y, `열기 정지! 시민 ${dead}명 동사`, "#ff4d4d");
+    } else {
+      // Good heating cures some sick
+      if (this.sick > 0) this.sick = Math.max(0, this.sick - 2);
+      if (this.morale < 100) this.morale = Math.min(100, this.morale + 4);
+    }
+
+    // New refugees join occasionally
+    if (this.day % 3 === 0 && this.morale > 40) {
+      const arrived = Math.floor(Math.random() * 4) + 2;
+      this.totalPop += arrived;
+      this.addFloatText(this.core.x, this.core.y, `난민 ${arrived}명 합류!`, "#4deeea");
+    }
+
+    // Temperature drops as days advance
+    this.temp = -15 - Math.floor(this.day * 2.2);
+    if (this.day >= 28) this.temp = -85; // Final whiteout blizzard
+
+    // Auto-balance population if deaths occurred
+    let assigned = this.workers + this.engineers + this.soldiers;
+    while (assigned > this.totalPop) {
+      if (this.workers > 0) this.workers--;
+      else if (this.soldiers > 0) this.soldiers--;
+      else if (this.engineers > 0) this.engineers--;
+      assigned = this.workers + this.engineers + this.soldiers;
+    }
+  }
+
+  spawnWave(count) {
+    const angleStep = (Math.PI * 2) / count;
+    const isBossWave = (this.day === 10 || this.day === 20 || this.day === 30);
+
+    for (let i = 0; i < count; i++) {
+      const angle = angleStep * i + (Math.random() - 0.5) * 0.4;
+      const spawnDist = Math.max(this.canvas.width, this.canvas.height) * 0.65 + Math.random() * 80;
+      const x = this.core.x + Math.cos(angle) * spawnDist;
+      const y = this.core.y + Math.sin(angle) * spawnDist;
+
+      // Enemy types
+      let type = 'lurker';
+      let hp = 45 + this.day * 8;
+      let speed = 1.3 + Math.random() * 0.4;
+      let damage = 14 + this.day * 1.5;
+      let size = 12;
+      let color = '#74eeff';
+
+      if (this.day > 5 && Math.random() < 0.35) {
+        type = 'brute';
+        hp = 140 + this.day * 18;
+        speed = 0.85;
+        damage = 32 + this.day * 2.5;
+        size = 18;
+        color = '#a5f3fc';
+      }
+
+      this.enemies.push({
+        id: 'e_' + Math.random(),
+        type: type,
+        x: x,
+        y: y,
+        hp: hp,
+        maxHp: hp,
+        speed: speed,
+        damage: damage,
+        size: size,
+        color: color,
+        attackCooldown: 0
+      });
+    }
+
+    // Boss spawns
+    if (isBossWave) {
+      let bossName = "서리 골리앗 (Frost Colossus)";
+      let bossHp = 2200;
+      let bossDmg = 80;
+      let bossSize = 34;
+
+      if (this.day === 20) {
+        bossName = "빙하 베히모스 (Glacial Behemoth)";
+        bossHp = 4500;
+        bossDmg = 140;
+        bossSize = 42;
+      } else if (this.day === 30) {
+        bossName = "절대영도의 군주 (Lord of Frost)";
+        bossHp = 9500;
+        bossDmg = 250;
+        bossSize = 52;
+      }
+
+      this.enemies.push({
+        id: 'boss_' + this.day,
+        type: 'boss',
+        name: bossName,
+        x: this.core.x,
+        y: this.core.y - this.canvas.height * 0.68,
+        hp: bossHp,
+        maxHp: bossHp,
+        speed: 0.55,
+        damage: bossDmg,
+        size: bossSize,
+        color: '#ffffff',
+        attackCooldown: 0
+      });
+
+      this.showBanner(`⚠️ 거대 보스 출현: ${bossName}!`);
+    }
+  }
+
+  showBanner(msg) {
+    const b = document.getElementById('event-banner');
+    document.getElementById('event-msg').innerText = msg;
+    b.style.display = 'flex';
+    setTimeout(() => { b.style.display = 'none'; }, 4500);
+  }
+
+  addFloatText(x, y, text, color = '#fff') {
+    this.floatTexts.push({
+      x: x, y: y, text: text, color: color,
+      alpha: 1.0, life: 1.2
+    });
+  }
+
+  // --- GAME LOOP & UPDATE ---
+  gameLoop(now) {
+    const dt = Math.min((now - this.lastTime) / 1000, 0.1);
+    this.lastTime = now;
+
+    if (!this.isPaused) {
+      const effectiveDt = dt * this.speed;
+      this.update(effectiveDt);
+    }
+
+    this.render();
+    requestAnimationFrame(this.gameLoop.bind(this));
+  }
+
+  update(dt) {
+    // 1. Time & Phase Progress
+    this.phaseTimer += dt;
+    const curLimit = this.phase === 'day' ? this.dayDuration : this.nightDuration;
+
+    if (this.phaseTimer >= curLimit) {
+      if (this.phase === 'day') {
+        this.startNight();
+      } else {
+        // If night and enemies are dead or time is up
+        if (this.enemies.length === 0 || this.phaseTimer >= curLimit + 25) {
+          this.startDay();
+        }
+      }
+    }
+
+    // 2. Resource Production & Consumption
+    const secStep = dt;
+    // Coal consumption by core
+    let coalDrain = (this.core.tier * 0.8) + (Math.abs(this.temp) * 0.025);
+    if (this.core.overdrive) coalDrain *= 2.2;
+    this.coal = Math.max(0, this.coal - coalDrain * secStep);
+
+    // If out of coal, disable overdrive automatically
+    if (this.coal <= 0 && this.core.overdrive) {
+      this.toggleOverdrive();
+    }
+
+    // Food consumption by population
+    const foodDrain = this.totalPop * 0.06;
+    this.food = Math.max(0, this.food - foodDrain * secStep);
+
+    // Production from buildings & workers
+    let woodInc = 0;
+    let stoneInc = 0;
+    let coalInc = 0;
+    let foodInc = 0;
+
+    this.buildings.forEach(b => {
+      const def = BUILDING_TYPES[b.type];
+      if (def.woodProd) woodInc += def.woodProd * b.tier;
+      if (def.stoneProd) stoneInc += def.stoneProd * b.tier;
+      if (def.coalProd) coalInc += def.coalProd * b.tier;
+      if (def.foodProd) foodInc += def.foodProd * b.tier;
+    });
+
+    // Workers buff
+    const workerMult = (1 + this.workers * 0.08);
+    this.wood += woodInc * workerMult * secStep;
+    this.stone += stoneInc * workerMult * secStep;
+    this.coal += coalInc * workerMult * secStep;
+    this.food += foodInc * workerMult * secStep;
+
+    // Rates for UI
+    this.currentRates = {
+      coal: (coalInc * workerMult - coalDrain).toFixed(1),
+      wood: (woodInc * workerMult).toFixed(1),
+      stone: (stoneInc * workerMult).toFixed(1),
+      food: (foodInc * workerMult - foodDrain).toFixed(1)
+    };
+
+    // 3. Engineers Wall Repair
+    if (this.engineers > 0) {
+      const repairRate = this.engineers * 8 * secStep;
+      // Find most damaged building
+      let mostDamaged = null;
+      let minHpRatio = 1.0;
+      this.buildings.forEach(b => {
+        const ratio = b.hp / b.maxHp;
+        if (ratio < minHpRatio) {
+          minHpRatio = ratio;
+          mostDamaged = b;
+        }
+      });
+
+      if (mostDamaged && minHpRatio < 0.98) {
+        mostDamaged.hp = Math.min(mostDamaged.maxHp, mostDamaged.hp + repairRate);
+        if (Math.random() < 0.15) {
+          AudioSys.playHammer();
+          this.particles.push({
+            x: mostDamaged.x + (Math.random() - 0.5) * 20,
+            y: mostDamaged.y + (Math.random() - 0.5) * 20,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            color: '#ffdc00',
+            size: 2, life: 0.3, maxLife: 0.3
+          });
+        }
+      }
+    }
+
+    // 4. Combat & Defensive Towers
+    this.updateCombat(dt);
+
+    // 5. Enemies update
+    this.updateEnemies(dt);
+
+    // 6. Projectiles update
+    this.updateProjectiles(dt);
+
+    // 7. Particles & Weather
+    this.updateParticles(dt);
+
+    // 8. Check Defeat
+    if (this.core.hp <= 0 || this.morale <= 0 || this.totalPop <= 0) {
+      this.triggerDefeat();
+    }
+
+    this.updateUI();
+  }
+
+  updateCombat(dt) {
+    const soldierBuff = 1 + (this.soldiers * 0.05);
+
+    this.buildings.forEach(b => {
+      if (b.type === 'ballista') {
+        b.lastShot = (b.lastShot || 0) + dt;
+        const cooldown = 1.3 / soldierBuff;
+        if (b.lastShot >= cooldown) {
+          // Find nearest enemy in range
+          let target = null;
+          let minDist = b.range;
+          this.enemies.forEach(e => {
+            const d = Math.hypot(e.x - b.x, e.y - b.y);
+            if (d < minDist) {
+              minDist = d;
+              target = e;
+            }
+          });
+
+          if (target) {
+            b.lastShot = 0;
+            AudioSys.playBallista();
+            this.projectiles.push({
+              x: b.x, y: b.y,
+              targetX: target.x, targetY: target.y,
+              targetRef: target,
+              speed: 480,
+              damage: b.damage * soldierBuff,
+              type: 'bolt'
+            });
+          }
+        }
+      } else if (b.type === 'flamethrower') {
+        b.lastShot = (b.lastShot || 0) + dt;
+        if (b.lastShot >= 0.3) {
+          let fired = false;
+          this.enemies.forEach(e => {
+            const d = Math.hypot(e.x - b.x, e.y - b.y);
+            if (d <= b.range) {
+              e.hp -= (b.damage * soldierBuff * 0.3);
+              fired = true;
+              // Add burn spark
+              this.particles.push({
+                x: e.x + (Math.random() - 0.5) * 10,
+                y: e.y + (Math.random() - 0.5) * 10,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                color: '#ff851b',
+                size: 3, life: 0.4, maxLife: 0.4
+              });
+            }
+          });
+          if (fired) {
+            b.lastShot = 0;
+          }
+        }
+      } else if (b.type === 'wall' && this.soldiers > 0) {
+        // Wall garrison archers
+        b.lastShot = (b.lastShot || 0) + dt;
+        if (b.lastShot >= 1.6) {
+          const archerRange = 140;
+          const target = this.enemies.find(e => Math.hypot(e.x - b.x, e.y - b.y) < archerRange);
+          if (target) {
+            b.lastShot = 0;
+            this.projectiles.push({
+              x: b.x, y: b.y,
+              targetX: target.x, targetY: target.y,
+              targetRef: target,
+              speed: 380,
+              damage: 22 * soldierBuff,
+              type: 'arrow'
+            });
+          }
+        }
+      }
+    });
+  }
+
+  updateEnemies(dt) {
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const e = this.enemies[i];
+
+      // Check dead
+      if (e.hp <= 0) {
+        AudioSys.playMonsterDeath();
+        this.addFloatText(e.x, e.y, "+석탄", "#a5f3fc");
+        this.coal += 3; // Slain ice beasts drop frozen coal
+        // Shatter particles
+        for (let p = 0; p < 12; p++) {
+          this.particles.push({
+            x: e.x, y: e.y,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4,
+            color: '#74eeff',
+            size: Math.random() * 3 + 1,
+            life: 0.6, maxLife: 0.6
+          });
+        }
+        this.enemies.splice(i, 1);
+        continue;
+      }
+
+      // Check obstacle in front (walls / buildings)
+      let obstacle = null;
+      let minObDist = 999;
+      this.buildings.forEach(b => {
+        const d = Math.hypot(b.x - e.x, b.y - e.y);
+        if (d < b.size + e.size + 4 && d < minObDist) {
+          minObDist = d;
+          obstacle = b;
+        }
+      });
+
+      // Also check core
+      const dCore = Math.hypot(this.core.x - e.x, this.core.y - e.y);
+      if (dCore < 45 + e.size) {
+        obstacle = this.core;
+      }
+
+      if (obstacle) {
+        // Attack obstacle
+        e.attackCooldown = (e.attackCooldown || 0) + dt;
+        if (e.attackCooldown >= 1.0) {
+          e.attackCooldown = 0;
+          obstacle.hp -= e.damage;
+          AudioSys.playExplosion();
+          this.addFloatText(obstacle.x, obstacle.y, `-${Math.round(e.damage)}`, "#ff4136");
+
+          // Wall damage effect
+          this.particles.push({
+            x: obstacle.x, y: obstacle.y,
+            vx: (Math.random() - 0.5) * 3,
+            vy: (Math.random() - 0.5) * 3,
+            color: '#ff4d4d',
+            size: 3, life: 0.3, maxLife: 0.3
+          });
+
+          // Check building destroyed
+          if (obstacle !== this.core && obstacle.hp <= 0) {
+            const bIdx = this.buildings.indexOf(obstacle);
+            if (bIdx !== -1) {
+              this.buildings.splice(bIdx, 1);
+              this.morale -= 5;
+              this.showBanner(`⚠️ 방어선 붕괴: ${obstacle.name}이 파괴되었습니다!`);
+            }
+          }
+        }
+      } else {
+        // Move towards core
+        const angle = Math.atan2(this.core.y - e.y, this.core.x - e.x);
+        e.x += Math.cos(angle) * e.speed * 60 * dt;
+        e.y += Math.sin(angle) * e.speed * 60 * dt;
+      }
+    }
+  }
+
+  updateProjectiles(dt) {
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      const target = p.targetRef;
+
+      let tx = p.targetX;
+      let ty = p.targetY;
+      if (target && target.hp > 0) {
+        tx = target.x;
+        ty = target.y;
+      }
+
+      const dist = Math.hypot(tx - p.x, ty - p.y);
+      const step = p.speed * dt;
+
+      if (dist <= step) {
+        // Hit
+        if (target && target.hp > 0) {
+          target.hp -= p.damage;
+          this.addFloatText(target.x, target.y, `-${Math.round(p.damage)}`, p.type === 'bolt' ? '#ffdc00' : '#4deeea');
+        }
+        this.projectiles.splice(i, 1);
+      } else {
+        const ang = Math.atan2(ty - p.y, tx - p.x);
+        p.x += Math.cos(ang) * step;
+        p.y += Math.sin(ang) * step;
+      }
+    }
+  }
+
+  updateParticles(dt) {
+    // Snow weather
+    const wind = (this.phase === 'night' ? 2.5 : 1.0) * (Math.abs(this.temp) / 20);
+    this.snowflakes.forEach(s => {
+      s.x += s.speedX * wind;
+      s.y += s.speedY * wind;
+      if (s.x > this.canvas.width) s.x = 0;
+      if (s.y > this.canvas.height) s.y = 0;
+    });
+
+    // Fire sparks from core
+    if (Math.random() < 0.6 && this.coal > 0) {
+      const ang = Math.random() * Math.PI * 2;
+      const rad = Math.random() * 25;
+      this.particles.push({
+        x: this.core.x + Math.cos(ang) * rad,
+        y: this.core.y + Math.sin(ang) * rad,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: -Math.random() * 2.5 - 1.0,
+        color: Math.random() < 0.5 ? '#ff851b' : '#ffdc00',
+        size: Math.random() * 2.5 + 1,
+        life: 0.9, maxLife: 0.9
+      });
+    }
+
+    // Update active particles
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.life -= dt;
+      if (p.life <= 0) {
+        this.particles.splice(i, 1);
+      } else {
+        p.x += p.vx;
+        p.y += p.vy;
+      }
+    }
+
+    // Floating combat texts
+    for (let i = this.floatTexts.length - 1; i >= 0; i--) {
+      const ft = this.floatTexts[i];
+      ft.life -= dt;
+      if (ft.life <= 0) {
+        this.floatTexts.splice(i, 1);
+      } else {
+        ft.y -= 25 * dt;
+        ft.alpha = ft.life / 1.2;
+      }
+    }
+  }
+
+  updateUI() {
+    document.getElementById('day-indicator').innerHTML = `<span>${this.phase === 'day' ? '☀️' : '🌙'} DAY ${this.day} / ${this.maxDays}</span>`;
+    document.getElementById('val-temp').innerText = `${this.temp}°C`;
+
+    document.getElementById('val-coal').innerText = Math.floor(this.coal);
+    document.getElementById('rate-coal').innerText = `(${this.currentRates?.coal || 0}/s)`;
+    document.getElementById('rate-coal').className = 'rate ' + (this.currentRates?.coal >= 0 ? 'pos' : 'neg');
+
+    document.getElementById('val-wood').innerText = Math.floor(this.wood);
+    document.getElementById('rate-wood').innerText = `(+${this.currentRates?.wood || 0}/s)`;
+
+    document.getElementById('val-stone').innerText = Math.floor(this.stone);
+    document.getElementById('rate-stone').innerText = `(+${this.currentRates?.stone || 0}/s)`;
+
+    document.getElementById('val-food').innerText = Math.floor(this.food);
+    document.getElementById('rate-food').innerText = `(${this.currentRates?.food || 0}/s)`;
+    document.getElementById('rate-food').className = 'rate ' + (this.currentRates?.food >= 0 ? 'pos' : 'neg');
+
+    // Phase Bar
+    const curLimit = this.phase === 'day' ? this.dayDuration : this.nightDuration;
+    const progressPct = Math.min(100, (this.phaseTimer / curLimit) * 100);
+    const bar = document.getElementById('phase-progress');
+    bar.style.width = `${progressPct}%`;
+    bar.className = 'time-progress-fill ' + (this.phase === 'night' ? 'night' : '');
+
+    document.getElementById('phase-icon').innerText = this.phase === 'day' ? '☀️' : '🌙';
+    document.getElementById('phase-text').innerText = this.phase === 'day' ? '낮 (건설)' : '밤 (공성)';
+
+    // Citizens & Morale
+    document.getElementById('val-pop-total').innerText = `인구 ${this.totalPop}명`;
+    document.getElementById('count-worker').innerText = this.workers;
+    document.getElementById('count-engineer').innerText = this.engineers;
+    document.getElementById('count-soldier').innerText = this.soldiers;
+    document.getElementById('count-idle').innerText = this.getIdlePop();
+    document.getElementById('count-sick').innerText = this.sick;
+
+    document.getElementById('val-morale').innerText = `${Math.floor(this.morale)}%`;
+    document.getElementById('bar-morale').style.width = `${Math.floor(this.morale)}%`;
+
+    const coreHpPct = Math.max(0, Math.floor((this.core.hp / this.core.maxHp) * 100));
+    document.getElementById('val-core-hp').innerText = `${coreHpPct}%`;
+    document.getElementById('bar-core-hp').style.width = `${coreHpPct}%`;
+  }
+
+  // --- RENDERING PIPELINE (CANVAS 2D) ---
+  render() {
+    const ctx = this.ctx;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // 1. Frozen Arctic Terrain Background
+    const bgGrad = ctx.createRadialGradient(this.core.x, this.core.y, 100, this.core.x, this.core.y, w * 0.7);
+    if (this.phase === 'day') {
+      bgGrad.addColorStop(0, '#16233b');
+      bgGrad.addColorStop(1, '#09101d');
+    } else {
+      bgGrad.addColorStop(0, '#0f172a');
+      bgGrad.addColorStop(1, '#04070f');
+    }
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Decorative terrain ice cracks
+    this.drawTerrainDetails(ctx);
+
+    // 2. Heat Aura Gradient from Central Core
+    const heatRadius = this.core.radius * (this.core.overdrive ? 1.5 : 1.0);
+    const heatGrad = ctx.createRadialGradient(this.core.x, this.core.y, 10, this.core.x, this.core.y, heatRadius);
+    if (this.coal > 0) {
+      heatGrad.addColorStop(0, 'rgba(255, 133, 27, 0.45)');
+      heatGrad.addColorStop(0.6, 'rgba(255, 65, 54, 0.18)');
+      heatGrad.addColorStop(1, 'rgba(255, 65, 54, 0)');
+    } else {
+      heatGrad.addColorStop(0, 'rgba(100, 150, 200, 0.1)');
+      heatGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    }
+    ctx.fillStyle = heatGrad;
+    ctx.beginPath();
+    ctx.arc(this.core.x, this.core.y, heatRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Heat border ring
+    ctx.strokeStyle = this.coal > 0 ? 'rgba(255, 133, 27, 0.35)' : 'rgba(116, 238, 255, 0.2)';
+    ctx.setLineDash([6, 6]);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 3. Buildings
+    this.buildings.forEach(b => this.drawBuilding(ctx, b));
+
+    // 4. Central Heat Core
+    this.drawCore(ctx);
+
+    // 5. Enemies
+    this.enemies.forEach(e => this.drawEnemy(ctx, e));
+
+    // 6. Projectiles
+    this.projectiles.forEach(p => this.drawProjectile(ctx, p));
+
+    // 7. Dynamic Night Darkness Vignette
+    if (this.phase === 'night') {
+      const darkGrad = ctx.createRadialGradient(this.core.x, this.core.y, heatRadius * 0.7, this.core.x, this.core.y, w * 0.85);
+      darkGrad.addColorStop(0, 'rgba(4, 8, 18, 0)');
+      darkGrad.addColorStop(0.7, 'rgba(3, 6, 15, 0.75)');
+      darkGrad.addColorStop(1, 'rgba(2, 4, 10, 0.94)');
+      ctx.fillStyle = darkGrad;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // 8. Particles & Blizzard Snow
+    this.drawParticles(ctx);
+
+    // 9. Floating Combat Texts
+    this.drawFloatTexts(ctx);
+
+    // 10. Placement Preview
+    if (this.selectedBuildType) {
+      this.drawPlacementPreview(ctx);
+    }
+  }
+
+  drawTerrainDetails(ctx) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(116, 238, 255, 0.06)';
+    ctx.lineWidth = 1;
+    // Concentric fortress guidelines
+    for (let r = 120; r <= 360; r += 80) {
+      ctx.beginPath();
+      ctx.arc(this.core.x, this.core.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  drawCore(ctx) {
+    const cx = this.core.x;
+    const cy = this.core.y;
+
+    // Glowing core base
+    ctx.save();
+    ctx.fillStyle = '#1c283d';
+    ctx.strokeStyle = '#74eeff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Furnace Fire Core
+    if (this.coal > 0) {
+      const fireGlow = ctx.createRadialGradient(cx, cy, 2, cx, cy, 24);
+      fireGlow.addColorStop(0, '#ffdc00');
+      fireGlow.addColorStop(0.6, '#ff851b');
+      fireGlow.addColorStop(1, '#ff4136');
+      ctx.fillStyle = fireGlow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 22 + Math.sin(performance.now() * 0.005) * 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Frozen dark core
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Core Chimney icon
+    ctx.font = "20px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🔥", cx, cy);
+
+    // HP Bar
+    const barW = 44;
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(cx - barW/2, cy + 38, barW, 5);
+    ctx.fillStyle = "#ff851b";
+    ctx.fillRect(cx - barW/2, cy + 38, barW * (this.core.hp / this.core.maxHp), 5);
+
+    ctx.restore();
+  }
+
+  drawBuilding(ctx, b) {
+    ctx.save();
+    const isSelected = (this.selectedBuilding === b);
+
+    // Selection ring
+    if (isSelected) {
+      ctx.strokeStyle = '#ffdc00';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.size + 4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Building Base
+    ctx.fillStyle = b.type === 'wall' ? '#334155' : '#1e293b';
+    ctx.strokeStyle = b.type === 'wall' ? '#64748b' : '#74eeff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Range preview on hover/select
+    if (isSelected && b.range) {
+      ctx.strokeStyle = 'rgba(116, 238, 255, 0.3)';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.range, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Icon
+    const def = BUILDING_TYPES[b.type];
+    ctx.font = `${Math.floor(b.size * 0.9)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(def.icon, b.x, b.y);
+
+    // HP Bar if damaged
+    if (b.hp < b.maxHp) {
+      const bw = b.size * 1.6;
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(b.x - bw/2, b.y - b.size - 8, bw, 4);
+      ctx.fillStyle = b.hp / b.maxHp > 0.4 ? '#2ecc40' : '#ff4136';
+      ctx.fillRect(b.x - bw/2, b.y - b.size - 8, bw * (b.hp / b.maxHp), 4);
+    }
+
+    // Tier badge
+    if (b.tier > 1) {
+      ctx.fillStyle = '#ff851b';
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText(`T${b.tier}`, b.x + b.size - 4, b.y + b.size - 4);
+    }
+
+    ctx.restore();
+  }
+
+  drawEnemy(ctx, e) {
+    ctx.save();
+    ctx.fillStyle = e.color;
+    ctx.shadowColor = e.color;
+    ctx.shadowBlur = e.type === 'boss' ? 20 : 8;
+
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eyes
+    ctx.fillStyle = '#ff4136';
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.arc(e.x - e.size * 0.3, e.y - e.size * 0.2, e.size * 0.2, 0, Math.PI * 2);
+    ctx.arc(e.x + e.size * 0.3, e.y - e.size * 0.2, e.size * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Boss Name & HP Bar
+    if (e.type === 'boss') {
+      const bw = 80;
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
+      ctx.fillRect(e.x - bw/2, e.y - e.size - 18, bw, 7);
+      ctx.fillStyle = '#ff4136';
+      ctx.fillRect(e.x - bw/2, e.y - e.size - 18, bw * (e.hp / e.maxHp), 7);
+
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(e.name, e.x, e.y - e.size - 22);
+    } else {
+      const bw = e.size * 2;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(e.x - bw/2, e.y - e.size - 6, bw, 3);
+      ctx.fillStyle = '#ff4136';
+      ctx.fillRect(e.x - bw/2, e.y - e.size - 6, bw * (e.hp / e.maxHp), 3);
+    }
+
+    ctx.restore();
+  }
+
+  drawProjectile(ctx, p) {
+    ctx.save();
+    if (p.type === 'bolt') {
+      ctx.fillStyle = '#ffdc00';
+      ctx.shadowColor = '#ffdc00';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#74eeff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  drawParticles(ctx) {
+    ctx.save();
+    // Blizzard Snow
+    ctx.fillStyle = '#ffffff';
+    this.snowflakes.forEach(s => {
+      ctx.globalAlpha = s.alpha;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Custom Particles (Sparks & Fire)
+    this.particles.forEach(p => {
+      ctx.globalAlpha = p.life / p.maxLife;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  drawFloatTexts(ctx) {
+    ctx.save();
+    ctx.font = "bold 13px monospace";
+    ctx.textAlign = "center";
+    this.floatTexts.forEach(ft => {
+      ctx.globalAlpha = ft.alpha;
+      ctx.fillStyle = ft.color;
+      ctx.fillText(ft.text, ft.x, ft.y);
+    });
+    ctx.restore();
+  }
+
+  drawPlacementPreview(ctx) {
+    const mx = this.mouse.x;
+    const my = this.mouse.y;
+    const def = BUILDING_TYPES[this.selectedBuildType];
+    if (!def) return;
+
+    const dToCore = Math.hypot(mx - this.core.x, my - this.core.y);
+    const overlap = this.buildings.some(b => Math.hypot(b.x - mx, b.y - my) < (b.size + (def.size || 28)) * 0.7);
+    const valid = (dToCore >= 40 && !overlap && this.wood >= def.cost.wood && this.stone >= def.cost.stone);
+
+    ctx.save();
+    ctx.strokeStyle = valid ? '#2ecc40' : '#ff4136';
+    ctx.fillStyle = valid ? 'rgba(46, 204, 64, 0.25)' : 'rgba(255, 65, 54, 0.25)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(mx, my, def.size || 28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Range preview
+    if (def.range) {
+      ctx.strokeStyle = 'rgba(116, 238, 255, 0.3)';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(mx, my, def.range, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.font = "20px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(def.icon, mx, my);
+
+    ctx.restore();
+  }
+
+  // --- SAVE & LOAD SYSTEM ---
+  saveGame(silent = false) {
+    const saveState = {
+      day: this.day,
+      phase: this.phase,
+      coal: this.coal,
+      wood: this.wood,
+      stone: this.stone,
+      food: this.food,
+      morale: this.morale,
+      totalPop: this.totalPop,
+      workers: this.workers,
+      engineers: this.engineers,
+      soldiers: this.soldiers,
+      sick: this.sick,
+      temp: this.temp,
+      core: {
+        hp: this.core.hp,
+        tier: this.core.tier,
+        radius: this.core.radius
+      },
+      buildings: this.buildings.map(b => ({
+        type: b.type, x: b.x, y: b.y, tier: b.tier, hp: b.hp, maxHp: b.maxHp
+      }))
+    };
+
+    try {
+      localStorage.setItem('frost_fortress_save', JSON.stringify(saveState));
+      if (!silent) {
+        AudioSys.init();
+        AudioSys.playDawnHorn();
+        this.addFloatText(this.core.x, this.core.y, "요새 데이터 저장 완료!", "#2ecc40");
+      }
+    } catch (e) {
+      console.error("Save failed", e);
+    }
+  }
+
+  loadGame() {
+    const raw = localStorage.getItem('frost_fortress_save');
+    if (!raw) return false;
+    try {
+      const s = JSON.parse(raw);
+      this.day = s.day;
+      this.phase = s.phase;
+      this.coal = s.coal;
+      this.wood = s.wood;
+      this.stone = s.stone;
+      this.food = s.food;
+      this.morale = s.morale;
+      this.totalPop = s.totalPop;
+      this.workers = s.workers;
+      this.engineers = s.engineers;
+      this.soldiers = s.soldiers;
+      this.sick = s.sick;
+      this.temp = s.temp;
+
+      if (s.core) {
+        this.core.hp = s.core.hp;
+        this.core.tier = s.core.tier;
+        this.core.radius = s.core.radius;
+      }
+
+      this.buildings = s.buildings.map(sb => {
+        const b = this.createBuilding(sb.type, sb.x, sb.y);
+        b.tier = sb.tier;
+        b.hp = sb.hp;
+        b.maxHp = sb.maxHp;
+        return b;
+      });
+
+      this.updateUI();
+      return true;
+    } catch (e) {
+      console.error("Load error", e);
+      return false;
+    }
+  }
+
+  triggerVictory() {
+    this.isPaused = true;
+    const modal = document.getElementById('modal-end');
+    document.getElementById('end-title').innerHTML = "☀️ 인류는 생존했습니다! (캠페인 승격)";
+    document.getElementById('end-desc').innerText = "30일간의 대혹한과 절대영도의 대공세를 이겨내고 마침내 영원한 태양이 떠올랐습니다.";
+    document.getElementById('end-stats').innerHTML = `
+      최종 생존 일수: 30일 완주<br>
+      최종 생존 인구: ${this.totalPop}명<br>
+      잔여 사기: ${Math.floor(this.morale)}%<br>
+      요새 구축 건물: ${this.buildings.length}동<br>
+      중앙 열기 코어 등급: Tier ${this.core.tier}
+    `;
+    modal.style.display = 'flex';
+  }
+
+  triggerDefeat() {
+    this.isPaused = true;
+    const modal = document.getElementById('modal-end');
+    document.getElementById('end-title').innerHTML = "❄️ 요새가 함락되었습니다";
+    document.getElementById('end-desc').innerText = "열기 코어가 파괴되었거나, 사기가 0%로 폭락하여 요새가 얼어붙었습니다.";
+    document.getElementById('end-stats').innerHTML = `
+      도달 일차: Day ${this.day}<br>
+      생존자 수: ${this.totalPop}명<br>
+      패배 사유: ${this.core.hp <= 0 ? '열기 코어 파괴' : (this.morale <= 0 ? '사기 폭락 및 반란' : '인구 전멸')}
+    `;
+    modal.style.display = 'flex';
+  }
+
+  restartGame() {
+    localStorage.removeItem('frost_fortress_save');
+    location.reload();
+  }
+
+  closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+}
+
+// Launch Game on Load
+let Game = null;
+window.addEventListener('DOMContentLoaded', () => {
+  Game = new GameEngine();
+  // Try loading previous save if available
+  if (localStorage.getItem('frost_fortress_save')) {
+    Game.loadGame();
+  }
+});
+</script>
+</body>
+</html>
