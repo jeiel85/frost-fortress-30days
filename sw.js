@@ -41,16 +41,21 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// 캐시 쓰기 promise를 돌려주고, 호출하는 쪽에서 event.waitUntil()로 이벤트 수명 안에 묶는다.
 function putInCache(request, response) {
-  if (!response || !response.ok || response.type === 'opaque') return;
+  if (!response || !response.ok || response.type === 'opaque') return Promise.resolve();
   const copy = response.clone();
-  caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
+  return caches
+    .open(CACHE_NAME)
+    .then((cache) => cache.put(request, copy))
+    .catch(() => {});
 }
 
-async function networkFirst(request) {
+async function networkFirst(event) {
+  const { request } = event;
   try {
     const response = await fetch(request);
-    putInCache(request, response);
+    event.waitUntil(putInCache(request, response));
     return response;
   } catch (err) {
     const cache = await caches.open(CACHE_NAME);
@@ -60,10 +65,11 @@ async function networkFirst(request) {
   }
 }
 
-async function networkFirstNavigation(request) {
+async function networkFirstNavigation(event) {
+  const { request } = event;
   try {
     const response = await fetch(request);
-    putInCache(request, response);
+    event.waitUntil(putInCache(request, response));
     return response;
   } catch (err) {
     const cache = await caches.open(CACHE_NAME);
@@ -77,14 +83,13 @@ async function staleWhileRevalidate(event) {
   const { request } = event;
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
-  const network = fetch(request).then((response) => {
-    putInCache(request, response);
+  const network = fetch(request).then(async (response) => {
+    await putInCache(request, response);
     return response;
   });
-  if (cached) {
-    event.waitUntil(network.catch(() => {}));
-    return cached;
-  }
+  // 캐시 히트든 아니든 네트워크 갱신과 캐시 쓰기가 끝날 때까지 워커를 유지한다.
+  event.waitUntil(network.catch(() => {}));
+  if (cached) return cached;
   return network;
 }
 
@@ -99,11 +104,11 @@ self.addEventListener('fetch', (event) => {
   if (request.headers.has('range')) return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirstNavigation(request));
+    event.respondWith(networkFirstNavigation(event));
     return;
   }
   if (NETWORK_FIRST_DESTINATIONS.includes(request.destination)) {
-    event.respondWith(networkFirst(request));
+    event.respondWith(networkFirst(event));
     return;
   }
   event.respondWith(staleWhileRevalidate(event));
